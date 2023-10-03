@@ -4,7 +4,7 @@ const bodyParser = require('body-parser');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const multer = require('multer');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const passport = require('passport'); //authentication middleware
 const LocalStrategy = require('passport-local').LocalStrategy;
 const jwt = require('jsonwebtoken');
@@ -16,7 +16,7 @@ const app = express();
 //middleware
 app.use(cors());
 app.use(express.json());
-app.use(bodyParser.urlencoded({extended: false}));
+app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(passport.initialize());
 
@@ -32,12 +32,12 @@ mongoose
   .then(() => {
     console.log('Connected to MongoDB');
   })
-  .catch(err => {
+  .catch((err) => {
     console.log('Error connecting to MongoDB: ', err);
   });
 const User = require('./model/db');
 const Message = require('./model/message');
-const {request} = require('http');
+const { request } = require('http');
 
 //function to send verification email to user
 const sendVerificationEmail = async (email, verificationToken) => {
@@ -67,7 +67,7 @@ const sendVerificationEmail = async (email, verificationToken) => {
   }
 };
 
-const hashPassword = async password => {
+const hashPassword = async (password) => {
   try {
     // Generate a salt
     const salt = await bcrypt.genSalt(10); // You can adjust the salt rounds as needed
@@ -97,12 +97,12 @@ app.post('/register', async (req, res) => {
     } = req.body;
 
     // Check if user with the same email exists
-    const existingUser = await User.findOne({email});
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({error: 'Email address already in use'});
+      return res.status(400).json({ error: 'Email address already in use' });
     }
     if (!password) {
-      return res.status(400).json({error: 'Password is required'});
+      return res.status(400).json({ error: 'Password is required' });
     }
     // Hash the user's password
     const hashedPassword = await hashPassword(password);
@@ -125,12 +125,12 @@ app.post('/register', async (req, res) => {
     sendVerificationEmail(newUser.email, newUser.verificationToken);
     res
       .status(201)
-      .json({message: 'User registered successfully', user: savedUser});
+      .json({ message: 'User registered successfully', user: savedUser });
   } catch (error) {
     console.error('Error:', error);
 
     // Send meaningful error response
-    res.status(500).json({error: error.message});
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -185,7 +185,7 @@ app.post('/register', async (req, res) => {
 
 //function to create token based on userID
 
-const createToken = userId => {
+const createToken = (userId) => {
   // Set token payload
   const payload = {
     userId: userId,
@@ -199,28 +199,28 @@ const createToken = userId => {
 //endpoint for logging in of user
 app.post('/login', async (req, res) => {
   try {
-    const {email, password} = req.body;
+    const { email, password } = req.body;
     console.log(req.body);
-    const user = await User.findOne({email});
+    const user = await User.findOne({ email });
 
     if (!user) {
-      return res.status(401).json({message: 'Invalid username or password'});
+      return res.status(401).json({ message: 'Invalid username or password' });
     }
 
     // Compare hashed password
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      return res.status(401).json({message: 'Invalid password'});
+      return res.status(401).json({ message: 'Invalid password' });
     }
 
-    const token = jwt.sign({userId: user._id}, secretKey);
+    const token = jwt.sign({ userId: user._id }, secretKey);
     // Send the userId along with the token in the response
-    res.status(200).json({token, userId: user._id, role: user.role});
+    res.status(200).json({ token, userId: user._id, role: user.role });
 
     console.log(res.json);
   } catch (err) {
-    res.status(500).json({message: 'Login failed'});
+    res.status(500).json({ message: 'Login failed' });
   }
 });
 
@@ -251,9 +251,9 @@ app.get('/verify/:token', async (req, res) => {
     const token = req.params.token;
 
     //find the user with the given verification token
-    const user = await User.findOne({verificationToken: token});
+    const user = await User.findOne({ verificationToken: token });
     if (!user) {
-      return res.status(404).json({message: 'User not found'});
+      return res.status(404).json({ message: 'User not found' });
     }
     //mark the user as verified
 
@@ -261,9 +261,9 @@ app.get('/verify/:token', async (req, res) => {
     user.verificationToken = undefined;
 
     await user.save();
-    res.status(200).json({message: 'Email Verified Successfully'});
+    res.status(200).json({ message: 'Email Verified Successfully' });
   } catch (err) {
-    res.status(500).json({message: 'Email Verification Failed'});
+    res.status(500).json({ message: 'Email Verification Failed' });
   }
 });
 
@@ -283,12 +283,12 @@ const secretKey = generateSecretKey();
 app.get('/astrologers', async (req, res) => {
   try {
     // Find users with role "astrologer"
-    const astrologerUsers = await User.find({role: 'astrologer'});
+    const astrologerUsers = await User.find({ role: 'astrologer' });
 
     res.status(200).json(astrologerUsers);
   } catch (error) {
     console.error('Error:', error);
-    res.status(500).json({error: 'Internal server error'});
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -297,28 +297,28 @@ app.get('/astrologers', async (req, res) => {
 app.get('/client', async (req, res) => {
   try {
     // Find users with role "astrologer"
-    const clientUsers = await User.find({role: 'client'});
+    const clientUsers = await User.find({ role: 'client' });
 
     res.status(200).json(clientUsers);
   } catch (error) {
     console.error('Error:', error);
-    res.status(500).json({error: 'Internal server error'});
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 //endpoints to send request
 
 app.post('/request', async (req, res) => {
-  const {currentId, selectedUserId} = req.body;
+  const { currentId, selectedUserId } = req.body;
   console.log(currentId, selectedUserId);
   try {
     //update the the receipent's request array
     await User.findByIdAndUpdate(selectedUserId, {
-      $push: {recievedRequest: currentId},
+      $push: { recievedRequest: currentId },
     });
     //update sender's sent request array
     await User.findByIdAndUpdate(currentId, {
-      $push: {sentRequest: selectedUserId},
+      $push: { sentRequest: selectedUserId },
     });
     res.sendStatus(200);
   } catch (error) {
@@ -330,7 +330,7 @@ app.post('/request', async (req, res) => {
 
 app.get('/chatList/:userId', async (req, res) => {
   try {
-    const {userId} = req.params;
+    const { userId } = req.params;
     console.log(userId);
     //fetch the user document based on userId
     const user = await User.findById(userId)
@@ -343,7 +343,7 @@ app.get('/chatList/:userId', async (req, res) => {
     res.json(chatRequest);
   } catch (error) {
     console.log('Error', error);
-    res.status(500).json({message: 'Internal server error'});
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 
@@ -351,7 +351,7 @@ app.get('/chatList/:userId', async (req, res) => {
 
 app.post('/chatRequest/accept', async (req, res) => {
   try {
-    const {senderId, recipientId} = req.body;
+    const { senderId, recipientId } = req.body;
 
     // Retrieve the documents of sender and recipient
     const sender = await User.findById(senderId);
@@ -359,7 +359,7 @@ app.post('/chatRequest/accept', async (req, res) => {
 
     // Check if sender and recipient exist
     if (!sender || !recipient) {
-      return res.status(404).json({message: 'User not found'});
+      return res.status(404).json({ message: 'User not found' });
     }
 
     // Update the friends array for both sender and recipient
@@ -368,21 +368,21 @@ app.post('/chatRequest/accept', async (req, res) => {
 
     // Remove the friend request entries
     recipient.recievedRequest = recipient.recievedRequest.filter(
-      request => request.toString() !== senderId.toString(),
+      (request) => request.toString() !== senderId.toString()
     );
 
     sender.sentRequest = sender.sentRequest.filter(
-      request => request.toString() !== recipientId.toString(),
+      (request) => request.toString() !== recipientId.toString()
     );
 
     // Save the changes to the database
     await sender.save();
     await recipient.save();
 
-    res.status(200).json({message: 'Friend request accepted successfully'});
+    res.status(200).json({ message: 'Friend request accepted successfully' });
   } catch (err) {
     console.log(err);
-    res.status(500).json({message: 'Server Error'});
+    res.status(500).json({ message: 'Server Error' });
   }
 });
 
@@ -390,7 +390,7 @@ app.post('/chatRequest/accept', async (req, res) => {
 
 app.get('/acceptedChatList/:userId', async (req, res) => {
   try {
-    const {userId} = req.params;
+    const { userId } = req.params;
 
     const user = await User.findById(userId).populate('friends', 'name');
 
@@ -398,7 +398,7 @@ app.get('/acceptedChatList/:userId', async (req, res) => {
     res.json(acceptedChat);
   } catch (error) {
     console.log(error);
-    res.status(500).json({message: 'internal Server Error'});
+    res.status(500).json({ message: 'internal Server Error' });
   }
 });
 
@@ -406,7 +406,7 @@ app.get('/acceptedChatList/:userId', async (req, res) => {
 
 app.post('/messages', async (req, res) => {
   try {
-    const {senderId, recipientId, messageType, messageText} = req.body;
+    const { senderId, recipientId, messageType, messageText } = req.body;
 
     const newMessage = new Message({
       senderId,
@@ -417,10 +417,10 @@ app.post('/messages', async (req, res) => {
     });
 
     await newMessage.save();
-    res.status(200).json({message: 'Message Sent successfully'});
+    res.status(200).json({ message: 'Message Sent successfully' });
   } catch (error) {
     console.log(error);
-    res.status(500).json({error: 'Internal server error'});
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -428,16 +428,16 @@ app.post('/messages', async (req, res) => {
 
 app.get('/user/:userId', async (req, res) => {
   try {
-    const {userId} = req.params;
+    const { userId } = req.params;
     // Fetch the user data from the database using User.findById
     const recipientId = await User.findById(userId);
     if (!recipientId) {
-      return res.status(404).json({error: 'User not found'});
+      return res.status(404).json({ error: 'User not found' });
     }
     res.json(recipientId);
   } catch (error) {
     console.error('Error in fetching user data:', error);
-    res.status(500).json({error: 'Internal server error'});
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -445,19 +445,19 @@ app.get('/user/:userId', async (req, res) => {
 
 app.get('/messages/:senderId/:recipientId', async (req, res) => {
   try {
-    const {senderId, recipientId} = req.params;
+    const { senderId, recipientId } = req.params;
 
     const messages = await Message.find({
       $or: [
-        {senderId: senderId, recipientId: recipientId},
-        {senderId: recipientId, recipientId: senderId},
+        { senderId: senderId, recipientId: recipientId },
+        { senderId: recipientId, recipientId: senderId },
       ],
     }).populate('senderId', '_id name');
 
     res.json(messages);
   } catch (error) {
     console.log(error);
-    res.status(500).json({error: 'Internal server error'});
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -465,16 +465,16 @@ app.get('/messages/:senderId/:recipientId', async (req, res) => {
 
 app.post('/deleteMessages', async (req, res) => {
   try {
-    const {messages} = req.body;
+    const { messages } = req.body;
     if (!Array.isArray(messages) || messages.length === 0) {
-      return res.status(400).json({message: 'Invalid req body'});
+      return res.status(400).json({ message: 'Invalid req body' });
     }
 
-    await Message.deleteMany({_id: {$in: messages}});
-    res.json({message: 'messages deleted successfully'});
+    await Message.deleteMany({ _id: { $in: messages } });
+    res.json({ message: 'messages deleted successfully' });
   } catch (error) {
     console.log(error);
-    res.status(500).json({message: 'Server error'});
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -487,14 +487,14 @@ app.get('/userInfo/:userId', async (req, res) => {
     const user = await User.findById(userId);
 
     if (!user) {
-      return res.status(404).json({error: 'User not found'});
+      return res.status(404).json({ error: 'User not found' });
     }
 
     console.log('User Info', user);
     res.json(user);
   } catch (error) {
     console.error('Error fetching user info:', error);
-    res.status(500).json({error: 'Server error'});
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
@@ -503,13 +503,13 @@ app.get('/userInfo/:userId', async (req, res) => {
 //endpoint to update user details
 
 app.put('/edit-userInfo/:userId', async (req, res) => {
-  const {userId} = req.params;
-  const {name, phoneNumber, bio, country, city} = req.body;
+  const { userId } = req.params;
+  const { name, phoneNumber, bio, country, city } = req.body;
   console.log(req.body);
   try {
     // Find the user by userId
     const user = await User.findOneAndUpdate(
-      {_id: userId},
+      { _id: userId },
       {
         $set: {
           name,
@@ -519,24 +519,22 @@ app.put('/edit-userInfo/:userId', async (req, res) => {
           city,
         },
       },
-      {new: true}, // Return the updated document
+      { new: true } // Return the updated document
     );
 
     if (!user) {
-      return res.status(404).json({error: 'User not found'});
+      return res.status(404).json({ error: 'User not found' });
     }
     return res.status(200).json(user); // Respond with the updated user data
   } catch (error) {
     console.error(error);
-    return res.status(500).json({error: 'Server error'});
+    return res.status(500).json({ error: 'Server error' });
   }
 });
 
-
 //endpoints for updating amount and astrologer online availability
 
-
-app.put("/updateUserData/:userId", async (req, res) => {
+app.put('/updateUserData/:userId', async (req, res) => {
   const { userId } = req.params;
   const { amount, isOnline } = req.body;
 
@@ -564,9 +562,8 @@ app.put("/updateUserData/:userId", async (req, res) => {
   }
 });
 
-
 //updating online status of astrologer
-app.put("/updateOnline/:userId", async (req, res) => {
+app.put('/updateOnline/:userId', async (req, res) => {
   const { userId } = req.params;
   const { isOnline } = req.body;
 
